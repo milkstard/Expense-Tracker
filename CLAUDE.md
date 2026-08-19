@@ -6,6 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 "Spendly" is a Flask-based expense tracker built as a step-by-step learning exercise. The codebase is a **scaffold**: routes, templates, and static assets exist, but core functionality (database layer, auth, expense CRUD) is intentionally left as placeholders for the developer to implement incrementally. Route handlers and `database/db.py` contain comments like `# Students will implement this` / `# coming in Step N` marking unfinished work — check these before assuming a feature exists.
 
+## Do not auto-implement placeholder steps
+
+This is a **learning exercise** — the developer implements each numbered step themselves, and learns by doing so. Do not write the implementation for `database/db.py`, a stub route, or any other `# Students will implement this` / `# coming in Step N` placeholder unless the user has explicitly asked you to implement that specific piece in the current turn.
+
+Organizational/prep actions are not implementation requests and must not be treated as one — in particular:
+- Creating or checking out a git branch (e.g. `feature/database-setup`)
+- Renaming the session (e.g. via `/rename`)
+- Any other setup step that merely signals what's coming next
+
+If it's ambiguous whether the user wants a given step implemented now, ask before writing code rather than inferring it from context like branch names.
+
 ## Commands
 
 Windows venv is already created at `venv/`. Activate it before running anything:
