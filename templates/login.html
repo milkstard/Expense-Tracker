@@ -16,6 +16,9 @@
             {% if error %}
             <div class="auth-error">{{ error }}</div>
             {% endif %}
+            {% if registered %}
+            <div class="auth-success">Account created — please sign in.</div>
+            {% endif %}
 
             <form method="POST" action="/login">
                 <div class="form-group">
