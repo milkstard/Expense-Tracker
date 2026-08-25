@@ -50,6 +50,22 @@ There is no linter or build step configured in this project.
 - **`static/css/style.css`** and **`static/js/main.js`** — global styles and client-side JS; `main.js` is currently empty, awaiting feature work.
 - The SQLite database file (`expense_tracker.db`) is gitignored and created at runtime by `init_db()` once implemented — don't expect it to exist in a fresh checkout.
 
+## Project map (source of truth)
+
+```
+Expense-Tracker/
+├── app.py                 # single-file Flask app — ALL routes live here, no blueprints
+├── CLAUDE.md              # project-level spec / conventions
+├── database/              # get_db(), init_db(), seed_db(), SQLite helpers
+├── templates/
+│   ├── base.html          # shared shell: nav, footer, {% block %} hooks
+│   └── *.html             # every page extends base.html
+├── static/
+│   ├── css/style.css      # the single global stylesheet
+│   └── js/                # client-side JS (minimal)
+└── requirements.txt
+```
+
 ## Conventions in this codebase
 
 - Currency/locale references (e.g. placeholder copy "Track every rupee") indicate INR is the target currency for expense amounts.
