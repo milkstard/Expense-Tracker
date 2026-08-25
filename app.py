@@ -1,10 +1,18 @@
 import os
 import sqlite3
+from datetime import datetime
 
 from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from database import get_db, init_db, seed_db, create_user, get_user_by_email
+from database import (
+    get_db,
+    init_db,
+    seed_db,
+    create_user,
+    get_user_by_email,
+    get_user_by_id,
+)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
@@ -12,6 +20,26 @@ app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-producti
 with app.app_context():
     init_db()
     seed_db()
+
+
+# ------------------------------------------------------------------ #
+# Helpers                                                             #
+# ------------------------------------------------------------------ #
+
+def format_member_since(created_at):
+    """Turn the users.created_at TEXT column into 'August 2026'."""
+    if not created_at:
+        return "—"
+    try:
+        return datetime.strptime(created_at, "%Y-%m-%d %H:%M:%S").strftime("%B %Y")
+    except (TypeError, ValueError):
+        return "—"
+
+
+def initials_for(name):
+    """First letter of up to the first two name parts, e.g. 'Demo User' -> 'DU'."""
+    parts = (name or "").split()
+    return "".join(part[0] for part in parts[:2]).upper() or "?"
 
 
 # ------------------------------------------------------------------ #
@@ -76,14 +104,31 @@ def logout():
     return redirect(url_for("landing"))
 
 
+@app.route("/profile")
+def profile():
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("login"))
+
+    row = get_user_by_id(user_id)
+    if row is None:
+        # Stale session pointing at a user that no longer exists.
+        session.clear()
+        return redirect(url_for("login"))
+
+    # Build an explicit dict so password_hash can never reach the template.
+    user = {
+        "name": row["name"],
+        "email": row["email"],
+        "initials": initials_for(row["name"]),
+        "member_since": format_member_since(row["created_at"]),
+    }
+    return render_template("profile.html", user=user)
+
+
 # ------------------------------------------------------------------ #
 # Placeholder routes — students will implement these                  #
 # ------------------------------------------------------------------ #
-
-@app.route("/profile")
-def profile():
-    return "Profile page — coming in Step 4"
-
 
 @app.route("/expenses/add")
 def add_expense():

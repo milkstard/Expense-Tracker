@@ -1,0 +1,25 @@
+{# Reusable pieces for the profile page. #}
+
+{% macro stat_card(label, value, hint) %}
+<div class="stat-card">
+    <span class="stat-label">{{ label }}</span>
+    <span class="stat-value">{{ value }}</span>
+    {% if hint %}<span class="stat-hint">{{ hint }}</span>{% endif %}
+</div>
+{% endmacro %}
+
+
+{% macro pill(text, tone) %}
+<span class="pill{% if tone %} pill--{{ tone }}{% endif %}">{{ text }}</span>
+{% endmacro %}
+
+
+{% macro cat_row(name, pct, amount, tone) %}
+<div class="cat-row">
+    <span class="cat-name">{{ name }}</span>
+    <div class="cat-track">
+        <div class="cat-bar{% if tone %} cat-bar--{{ tone }}{% endif %}" style="width: {{ pct }}%"></div>
+    </div>
+    <span class="cat-amount">{{ amount }}</span>
+</div>
+{% endmacro %}
