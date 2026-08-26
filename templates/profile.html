@@ -21,14 +21,10 @@
         {{ pill("Member since " ~ user.member_since, "accent") }}
     </article>
 
-    {# ---------------------------------------------------------------- #}
-    {# Sample figures below — real expense queries land in Steps 7–9.    #}
-    {# ---------------------------------------------------------------- #}
-
     <div class="stat-row">
-        {{ stat_card("Total spent", "₹6,348.50", "This month") }}
-        {{ stat_card("Transactions", "8", "Logged so far") }}
-        {{ stat_card("Top category", "Shopping", "₹2,350.00") }}
+        {{ stat_card("Total spent", summary.total, "All time") }}
+        {{ stat_card("Transactions", summary.count, "Logged so far") }}
+        {{ stat_card("Top category", summary.top_category, summary.top_amount) }}
     </div>
 
     <div class="profile-grid">
@@ -36,8 +32,9 @@
         <section class="panel">
             <div class="panel-head">
                 <h3 class="panel-title">Recent transactions</h3>
-                <span class="panel-note">Last 8</span>
+                {% if transactions %}<span class="panel-note">Last {{ transactions|length }}</span>{% endif %}
             </div>
+            {% if transactions %}
             <div class="table-scroll">
                 <table class="txn-table">
                     <thead>
@@ -49,73 +46,36 @@
                         </tr>
                     </thead>
                     <tbody>
+                        {% for txn in transactions %}
                         <tr>
-                            <td class="txn-date">18 Aug</td>
-                            <td>Miscellaneous</td>
-                            <td>{{ pill("Other", "other") }}</td>
-                            <td class="num">₹100.00</td>
+                            <td class="txn-date">{{ txn.date }}</td>
+                            <td>{{ txn.description }}</td>
+                            <td>{{ pill(txn.category, txn.tone) }}</td>
+                            <td class="num">{{ txn.amount }}</td>
                         </tr>
-                        <tr>
-                            <td class="txn-date">15 Aug</td>
-                            <td>Dinner with friends</td>
-                            <td>{{ pill("Food", "food") }}</td>
-                            <td class="num">₹620.50</td>
-                        </tr>
-                        <tr>
-                            <td class="txn-date">12 Aug</td>
-                            <td>New running shoes</td>
-                            <td>{{ pill("Shopping", "shopping") }}</td>
-                            <td class="num">₹2,350.00</td>
-                        </tr>
-                        <tr>
-                            <td class="txn-date">10 Aug</td>
-                            <td>Netflix subscription</td>
-                            <td>{{ pill("Entertainment", "entertainment") }}</td>
-                            <td class="num">₹799.00</td>
-                        </tr>
-                        <tr>
-                            <td class="txn-date">08 Aug</td>
-                            <td>Pharmacy — vitamins</td>
-                            <td>{{ pill("Health", "health") }}</td>
-                            <td class="num">₹350.00</td>
-                        </tr>
-                        <tr>
-                            <td class="txn-date">05 Aug</td>
-                            <td>Electricity bill</td>
-                            <td>{{ pill("Bills", "bills") }}</td>
-                            <td class="num">₹1,499.00</td>
-                        </tr>
-                        <tr>
-                            <td class="txn-date">04 Aug</td>
-                            <td>Uber to office</td>
-                            <td>{{ pill("Transport", "transport") }}</td>
-                            <td class="num">₹180.00</td>
-                        </tr>
-                        <tr>
-                            <td class="txn-date">02 Aug</td>
-                            <td>Groceries — BigBasket</td>
-                            <td>{{ pill("Food", "food") }}</td>
-                            <td class="num">₹450.00</td>
-                        </tr>
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
+            {% else %}
+            <p class="panel-empty">No expenses yet.</p>
+            {% endif %}
         </section>
 
         <section class="panel">
             <div class="panel-head">
                 <h3 class="panel-title">Where it goes</h3>
-                <span class="panel-note">By category</span>
+                {% if categories %}<span class="panel-note">By category</span>{% endif %}
             </div>
+            {% if categories %}
             <div class="cat-list">
-                {{ cat_row("Shopping", 100, "₹2,350.00", "shopping") }}
-                {{ cat_row("Bills", 64, "₹1,499.00", "bills") }}
-                {{ cat_row("Food", 46, "₹1,070.50", "food") }}
-                {{ cat_row("Entertainment", 34, "₹799.00", "entertainment") }}
-                {{ cat_row("Health", 15, "₹350.00", "health") }}
-                {{ cat_row("Transport", 8, "₹180.00", "transport") }}
-                {{ cat_row("Other", 4, "₹100.00", "other") }}
+                {% for cat in categories %}
+                {{ cat_row(cat.name, cat.pct, cat.amount, cat.tone) }}
+                {% endfor %}
             </div>
+            {% else %}
+            <p class="panel-empty">No expenses yet.</p>
+            {% endif %}
         </section>
 
     </div>

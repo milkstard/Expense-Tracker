@@ -12,6 +12,9 @@ from database import (
     create_user,
     get_user_by_email,
     get_user_by_id,
+    get_expense_summary,
+    get_recent_expenses,
+    get_category_breakdown,
 )
 
 app = Flask(__name__)
@@ -40,6 +43,35 @@ def initials_for(name):
     """First letter of up to the first two name parts, e.g. 'Demo User' -> 'DU'."""
     parts = (name or "").split()
     return "".join(part[0] for part in parts[:2]).upper() or "?"
+
+
+def format_inr(amount):
+    """Render an amount as INR, e.g. 6348.5 -> '₹6,348.50'."""
+    return f"₹{amount or 0:,.2f}"
+
+
+def format_txn_date(date_str):
+    """Turn an expenses.date TEXT column ('YYYY-MM-DD') into '18 Aug'."""
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").strftime("%d %b")
+    except (TypeError, ValueError):
+        return date_str
+
+
+CATEGORY_TONES = {
+    "food": "food",
+    "transport": "transport",
+    "bills": "bills",
+    "health": "health",
+    "entertainment": "entertainment",
+    "shopping": "shopping",
+    "other": "other",
+}
+
+
+def category_tone(category):
+    """Map a category name to its pill/cat-bar tone slug, defaulting to 'other'."""
+    return CATEGORY_TONES.get((category or "").strip().lower(), "other")
 
 
 # ------------------------------------------------------------------ #
@@ -123,7 +155,45 @@ def profile():
         "initials": initials_for(row["name"]),
         "member_since": format_member_since(row["created_at"]),
     }
-    return render_template("profile.html", user=user)
+
+    raw_summary = get_expense_summary(user_id)
+    summary = {
+        "total": format_inr(raw_summary["total"]),
+        "count": raw_summary["count"],
+        "top_category": raw_summary["top_category"] or "—",
+        "top_amount": format_inr(raw_summary["top_amount"]) if raw_summary["top_category"] else "",
+    }
+
+    transactions = [
+        {
+            "date": format_txn_date(row["date"]),
+            "description": row["description"] or "—",
+            "category": row["category"],
+            "tone": category_tone(row["category"]),
+            "amount": format_inr(row["amount"]),
+        }
+        for row in get_recent_expenses(user_id)
+    ]
+
+    breakdown = get_category_breakdown(user_id)
+    peak = breakdown[0]["total"] if breakdown else 0
+    categories = [
+        {
+            "name": row["category"],
+            "tone": category_tone(row["category"]),
+            "amount": format_inr(row["total"]),
+            "pct": round(row["total"] / peak * 100) if peak else 0,
+        }
+        for row in breakdown
+    ]
+
+    return render_template(
+        "profile.html",
+        user=user,
+        summary=summary,
+        transactions=transactions,
+        categories=categories,
+    )
 
 
 # ------------------------------------------------------------------ #
