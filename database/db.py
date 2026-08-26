@@ -79,20 +79,40 @@ def get_user_by_id(user_id):
         conn.close()
 
 
-def get_expense_summary(user_id):
+def _date_range_sql(start_date, end_date):
+    """Build the optional inclusive date-range clause for an expenses query.
+
+    Returns (sql_fragment, params). The fragment is literal SQL only — the
+    dates themselves always travel as bound parameters. expenses.date is an
+    ISO 'YYYY-MM-DD' string, so plain string comparison filters correctly
+    without a CAST or date() call.
+    """
+    fragment = ""
+    params = []
+    if start_date:
+        fragment += " AND date >= ?"
+        params.append(start_date)
+    if end_date:
+        fragment += " AND date <= ?"
+        params.append(end_date)
+    return fragment, params
+
+
+def get_expense_summary(user_id, start_date=None, end_date=None):
+    date_sql, date_params = _date_range_sql(start_date, end_date)
     conn = get_db()
     try:
         totals = conn.execute(
             "SELECT COUNT(*) AS count, COALESCE(SUM(amount), 0) AS total "
-            "FROM expenses WHERE user_id = ?",
-            (user_id,),
+            "FROM expenses WHERE user_id = ?" + date_sql,
+            (user_id, *date_params),
         ).fetchone()
 
         top = conn.execute(
             "SELECT category, SUM(amount) AS total FROM expenses "
-            "WHERE user_id = ? GROUP BY category "
+            "WHERE user_id = ?" + date_sql + " GROUP BY category "
             "ORDER BY total DESC, category ASC LIMIT 1",
-            (user_id,),
+            (user_id, *date_params),
         ).fetchone()
 
         return {
@@ -105,26 +125,34 @@ def get_expense_summary(user_id):
         conn.close()
 
 
-def get_recent_expenses(user_id, limit=8):
+def get_recent_expenses(user_id, limit=8, start_date=None, end_date=None):
+    """Most recent expenses for a user, newest first. limit=None returns all."""
+    date_sql, date_params = _date_range_sql(start_date, end_date)
+    sql = (
+        "SELECT id, amount, category, date, description FROM expenses "
+        "WHERE user_id = ?" + date_sql + " ORDER BY date DESC, id DESC"
+    )
+    params = [user_id, *date_params]
+    if limit is not None:
+        sql += " LIMIT ?"
+        params.append(limit)
+
     conn = get_db()
     try:
-        return conn.execute(
-            "SELECT id, amount, category, date, description FROM expenses "
-            "WHERE user_id = ? ORDER BY date DESC, id DESC LIMIT ?",
-            (user_id, limit),
-        ).fetchall()
+        return conn.execute(sql, params).fetchall()
     finally:
         conn.close()
 
 
-def get_category_breakdown(user_id):
+def get_category_breakdown(user_id, start_date=None, end_date=None):
+    date_sql, date_params = _date_range_sql(start_date, end_date)
     conn = get_db()
     try:
         return conn.execute(
             "SELECT category, SUM(amount) AS total FROM expenses "
-            "WHERE user_id = ? GROUP BY category "
+            "WHERE user_id = ?" + date_sql + " GROUP BY category "
             "ORDER BY total DESC, category ASC",
-            (user_id,),
+            (user_id, *date_params),
         ).fetchall()
     finally:
         conn.close()
