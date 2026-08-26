@@ -79,6 +79,57 @@ def get_user_by_id(user_id):
         conn.close()
 
 
+def get_expense_summary(user_id):
+    conn = get_db()
+    try:
+        totals = conn.execute(
+            "SELECT COUNT(*) AS count, COALESCE(SUM(amount), 0) AS total "
+            "FROM expenses WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()
+
+        top = conn.execute(
+            "SELECT category, SUM(amount) AS total FROM expenses "
+            "WHERE user_id = ? GROUP BY category "
+            "ORDER BY total DESC, category ASC LIMIT 1",
+            (user_id,),
+        ).fetchone()
+
+        return {
+            "count": totals["count"],
+            "total": totals["total"],
+            "top_category": top["category"] if top else None,
+            "top_amount": top["total"] if top else None,
+        }
+    finally:
+        conn.close()
+
+
+def get_recent_expenses(user_id, limit=8):
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT id, amount, category, date, description FROM expenses "
+            "WHERE user_id = ? ORDER BY date DESC, id DESC LIMIT ?",
+            (user_id, limit),
+        ).fetchall()
+    finally:
+        conn.close()
+
+
+def get_category_breakdown(user_id):
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT category, SUM(amount) AS total FROM expenses "
+            "WHERE user_id = ? GROUP BY category "
+            "ORDER BY total DESC, category ASC",
+            (user_id,),
+        ).fetchall()
+    finally:
+        conn.close()
+
+
 def seed_db():
     conn = get_db()
     try:

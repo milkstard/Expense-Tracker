@@ -783,6 +783,13 @@ a { color: inherit; text-decoration: none; }
     white-space: nowrap;
 }
 
+.panel-empty {
+    padding: 1.5rem 0;
+    font-size: 0.9rem;
+    color: var(--ink-faint);
+    text-align: center;
+}
+
 /* Below 600px: header, identity card, and stat row bleed edge-to-edge; */
 /* panels keep their own gutter since profile-section's padding is gone. */
 

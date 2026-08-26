@@ -41,8 +41,10 @@ following the existing pattern (parameterised query, connection closed in a
   expenses ordered by `date DESC, id DESC`, capped at `limit`.
 - `get_category_breakdown(user_id)` — returns per-category totals for the
   user (`category`, `total`), ordered by total descending, via
-  `GROUP BY category`. The route computes each category's percentage of the
-  overall total for the progress-bar width (avoids doing percentage math in
+  `GROUP BY category`. The route computes each category's progress-bar width
+  as a percentage of the **top category's** total (not the overall total) —
+  this matches Step 4's hardcoded figures, where the largest category's bar
+  is 100% and the rest scale relative to it (avoids doing percentage math in
   SQL/SQLite).
 
 All three scope to `WHERE user_id = ?` — a user must only ever see their own
