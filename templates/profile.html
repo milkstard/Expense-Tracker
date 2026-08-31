@@ -21,9 +21,32 @@
         {{ pill("Member since " ~ user.member_since, "accent") }}
     </article>
 
+    {# GET, not POST: keeps a filtered view bookmarkable and shareable. #}
+    <form class="filter-bar" method="GET" action="{{ url_for('profile') }}">
+        <div class="filter-field">
+            <label class="filter-label" for="start_date">From</label>
+            <input type="date" id="start_date" name="start_date"
+                   class="form-input" value="{{ filters.start_date }}">
+        </div>
+        <div class="filter-field">
+            <label class="filter-label" for="end_date">To</label>
+            <input type="date" id="end_date" name="end_date"
+                   class="form-input" value="{{ filters.end_date }}">
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="btn-primary">Apply</button>
+            {% if filters.active %}
+            <a href="{{ url_for('profile') }}" class="btn-ghost">Clear filter</a>
+            {% endif %}
+        </div>
+        {% if error %}
+        <p class="filter-error">{{ error }}</p>
+        {% endif %}
+    </form>
+
     <div class="stat-row">
-        {{ stat_card("Total spent", summary.total, "All time") }}
-        {{ stat_card("Transactions", summary.count, "Logged so far") }}
+        {{ stat_card("Total spent", summary.total, summary.scope) }}
+        {{ stat_card("Transactions", summary.count, summary.count_hint) }}
         {{ stat_card("Top category", summary.top_category, summary.top_amount) }}
     </div>
 
@@ -32,7 +55,7 @@
         <section class="panel">
             <div class="panel-head">
                 <h3 class="panel-title">Recent transactions</h3>
-                {% if transactions %}<span class="panel-note">Last {{ transactions|length }}</span>{% endif %}
+                {% if transactions %}<span class="panel-note">{% if filters.active %}{{ transactions|length }} in range{% else %}Last {{ transactions|length }}{% endif %}</span>{% endif %}
             </div>
             {% if transactions %}
             <div class="table-scroll">
@@ -58,7 +81,7 @@
                 </table>
             </div>
             {% else %}
-            <p class="panel-empty">No expenses yet.</p>
+            <p class="panel-empty">{% if filters.active %}No expenses in this date range.{% else %}No expenses yet.{% endif %}</p>
             {% endif %}
         </section>
 
@@ -74,7 +97,7 @@
                 {% endfor %}
             </div>
             {% else %}
-            <p class="panel-empty">No expenses yet.</p>
+            <p class="panel-empty">{% if filters.active %}No expenses in this date range.{% else %}No expenses yet.{% endif %}</p>
             {% endif %}
         </section>
 

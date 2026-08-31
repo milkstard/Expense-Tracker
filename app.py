@@ -58,6 +58,33 @@ def format_txn_date(date_str):
         return date_str
 
 
+def clean_date_param(raw):
+    """Validate a 'YYYY-MM-DD' date from the query string.
+
+    Returns (value, malformed): absent/blank -> (None, False),
+    unparseable -> (None, True).
+    """
+    raw = (raw or "").strip()
+    if not raw:
+        return None, False
+    try:
+        datetime.strptime(raw, "%Y-%m-%d")
+    except ValueError:
+        return None, True
+    return raw, False
+
+
+def format_date_range(start_date, end_date):
+    """Human-readable label for the active date range, e.g. '05 Aug – 12 Aug'."""
+    if start_date and end_date:
+        return f"{format_txn_date(start_date)} – {format_txn_date(end_date)}"
+    if start_date:
+        return f"From {format_txn_date(start_date)}"
+    if end_date:
+        return f"Until {format_txn_date(end_date)}"
+    return "All time"
+
+
 CATEGORY_TONES = {
     "food": "food",
     "transport": "transport",
@@ -156,12 +183,33 @@ def profile():
         "member_since": format_member_since(row["created_at"]),
     }
 
-    raw_summary = get_expense_summary(user_id)
+    # Optional date filter — untrusted query-string input, validated here.
+    start_date, start_bad = clean_date_param(request.args.get("start_date"))
+    end_date, end_bad = clean_date_param(request.args.get("end_date"))
+
+    error = None
+    if start_bad or end_bad:
+        error = "Please enter a valid date."
+        start_date = end_date = None
+    elif start_date and end_date and start_date > end_date:
+        error = "Start date must be on or before the end date."
+        start_date = end_date = None
+
+    active = bool(start_date or end_date)
+    filters = {
+        "start_date": start_date or "",
+        "end_date": end_date or "",
+        "active": active,
+    }
+
+    raw_summary = get_expense_summary(user_id, start_date, end_date)
     summary = {
         "total": format_inr(raw_summary["total"]),
         "count": raw_summary["count"],
         "top_category": raw_summary["top_category"] or "—",
         "top_amount": format_inr(raw_summary["top_amount"]) if raw_summary["top_category"] else "",
+        "scope": format_date_range(start_date, end_date),
+        "count_hint": "In this range" if active else "Logged so far",
     }
 
     transactions = [
@@ -172,10 +220,14 @@ def profile():
             "tone": category_tone(row["category"]),
             "amount": format_inr(row["amount"]),
         }
-        for row in get_recent_expenses(user_id)
+        # A filtered view shows every match, so the table can't silently
+        # disagree with the transaction count in the stat card above it.
+        for row in get_recent_expenses(
+            user_id, None if active else 8, start_date, end_date
+        )
     ]
 
-    breakdown = get_category_breakdown(user_id)
+    breakdown = get_category_breakdown(user_id, start_date, end_date)
     peak = breakdown[0]["total"] if breakdown else 0
     categories = [
         {
@@ -193,6 +245,8 @@ def profile():
         summary=summary,
         transactions=transactions,
         categories=categories,
+        filters=filters,
+        error=error,
     )
 
 
