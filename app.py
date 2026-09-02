@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from datetime import datetime
+from datetime import date, datetime
 
 from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -10,6 +10,7 @@ from database import (
     init_db,
     seed_db,
     create_user,
+    create_expense,
     get_user_by_email,
     get_user_by_id,
     get_expense_summary,
@@ -99,6 +100,26 @@ CATEGORY_TONES = {
 def category_tone(category):
     """Map a category name to its pill/cat-bar tone slug, defaulting to 'other'."""
     return CATEGORY_TONES.get((category or "").strip().lower(), "other")
+
+
+# Title-case options for the add-expense form, derived from CATEGORY_TONES so
+# the dropdown can never drift out of sync with the pill/cat-bar tone map.
+CATEGORIES = [slug.title() for slug in CATEGORY_TONES]
+
+
+def clean_amount(raw):
+    """Validate a rupee amount from a form field. Returns (value, error)."""
+    raw = (raw or "").strip()
+    if not raw:
+        return None, "Please enter an amount."
+    try:
+        amount = float(raw)
+    except ValueError:
+        return None, "Amount must be a number."
+    # Upper bound also rejects inf; NaN fails the lower comparison.
+    if not 0 < amount < 10_000_000:
+        return None, "Amount must be greater than zero."
+    return round(amount, 2), None
 
 
 # ------------------------------------------------------------------ #
@@ -250,14 +271,54 @@ def profile():
     )
 
 
+@app.route("/expenses/add", methods=["GET", "POST"])
+def add_expense():
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        form = {
+            "amount": request.form.get("amount", "").strip(),
+            "category": request.form.get("category", "").strip(),
+            "date": request.form.get("date", "").strip(),
+            "description": request.form.get("description", "").strip(),
+        }
+
+        amount, error = clean_amount(form["amount"])
+
+        if not error and form["category"] not in CATEGORIES:
+            error = "Please choose a category."
+
+        expense_date = None
+        if not error:
+            expense_date, malformed = clean_date_param(form["date"])
+            if malformed or not expense_date:
+                error = "Please enter a valid date."
+
+        if error:
+            return render_template(
+                "add_expense.html", categories=CATEGORIES, form=form, error=error
+            )
+
+        create_expense(
+            user_id, amount, form["category"], expense_date,
+            form["description"] or None,
+        )
+        return redirect(url_for("profile"))
+
+    form = {
+        "amount": "",
+        "category": "",
+        "date": date.today().isoformat(),
+        "description": "",
+    }
+    return render_template("add_expense.html", categories=CATEGORIES, form=form)
+
+
 # ------------------------------------------------------------------ #
 # Placeholder routes — students will implement these                  #
 # ------------------------------------------------------------------ #
-
-@app.route("/expenses/add")
-def add_expense():
-    return "Add expense — coming in Step 7"
-
 
 @app.route("/expenses/<int:id>/edit")
 def edit_expense(id):

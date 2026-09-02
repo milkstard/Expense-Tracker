@@ -55,7 +55,8 @@
         <section class="panel">
             <div class="panel-head">
                 <h3 class="panel-title">Recent transactions</h3>
-                {% if transactions %}<span class="panel-note">{% if filters.active %}{{ transactions|length }} in range{% else %}Last {{ transactions|length }}{% endif %}</span>{% endif %}
+                {% if transactions and filters.active %}<span class="panel-note">{{ transactions|length }} in range</span>{% endif %}
+                <a href="{{ url_for('add_expense') }}" class="btn-primary">Add expense</a>
             </div>
             {% if transactions %}
             <div class="table-scroll">
@@ -80,8 +81,13 @@
                     </tbody>
                 </table>
             </div>
+            {% elif filters.active %}
+            <p class="panel-empty">No expenses in this date range.</p>
             {% else %}
-            <p class="panel-empty">{% if filters.active %}No expenses in this date range.{% else %}No expenses yet.{% endif %}</p>
+            <div class="panel-empty">
+                <p>No expenses yet.</p>
+                <a href="{{ url_for('add_expense') }}" class="btn-primary">Add expense</a>
+            </div>
             {% endif %}
         </section>
 

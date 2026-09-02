@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Add expense — Spendly{% endblock %}
+
+{% block content %}
+
+<section class="profile-section">
+
+    <header class="profile-header">
+        <span class="profile-eyebrow">Your account</span>
+        <h1 class="profile-title">Add an <em>expense</em></h1>
+    </header>
+
+    <article class="panel">
+        <div class="panel-head">
+            <h3 class="panel-title">New expense</h3>
+            <a href="{{ url_for('profile') }}" class="btn-ghost">Back to profile</a>
+        </div>
+
+        {% if error %}
+        <p class="form-error">{{ error }}</p>
+        {% endif %}
+
+        <form class="expense-form" method="POST" action="{{ url_for('add_expense') }}">
+            <div class="expense-form__row">
+                <div class="form-group">
+                    <label for="amount">Amount (₹)</label>
+                    <input type="number" id="amount" name="amount"
+                           class="form-input" step="0.01" min="0.01"
+                           placeholder="450.00" value="{{ form.amount }}"
+                           required autofocus>
+                </div>
+                <div class="form-group">
+                    <label for="category">Category</label>
+                    <select id="category" name="category" class="form-input form-select" required>
+                        <option value="" disabled {% if not form.category %}selected{% endif %}>Choose a category</option>
+                        {% for c in categories %}
+                        <option value="{{ c }}" {% if c == form.category %}selected{% endif %}>{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="date">Date</label>
+                    <input type="date" id="date" name="date"
+                           class="form-input" value="{{ form.date }}" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description (optional)</label>
+                <input type="text" id="description" name="description"
+                       class="form-input" placeholder="Groceries — BigBasket"
+                       value="{{ form.description }}">
+            </div>
+
+            <div class="expense-form__actions">
+                <button type="submit" class="btn-primary">Save expense</button>
+            </div>
+        </form>
+    </article>
+
+</section>
+
+{% endblock %}
