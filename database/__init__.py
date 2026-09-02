@@ -3,6 +3,7 @@ from .db import (
     init_db,
     seed_db,
     create_user,
+    create_expense,
     get_user_by_email,
     get_user_by_id,
     get_expense_summary,

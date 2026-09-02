@@ -44,7 +44,7 @@ There is no linter or build step configured in this project.
 
 ## Architecture
 
-- **`app.py`** — single-file Flask app; all routes are defined here (no blueprints). Routes render Jinja templates from `templates/`. Several routes (`/logout`, `/profile`, `/expenses/add`, `/expenses/<id>/edit`, `/expenses/<id>/delete`) are stubs returning plain-text placeholder strings — they need real implementations (session handling, DB queries, form processing).
+- **`app.py`** — single-file Flask app; all routes are defined here (no blueprints). Routes render Jinja templates from `templates/`. Two routes (`/expenses/<id>/edit`, `/expenses/<id>/delete`) are still stubs returning plain-text placeholder strings — they need real implementations (session handling, DB queries, form processing).
 - **`database/db.py`** — intended to hold `get_db()` (SQLite connection with `row_factory` and foreign keys enabled), `init_db()` (creates tables via `CREATE TABLE IF NOT EXISTS`), and `seed_db()` (sample data for dev). Currently empty/unimplemented — this is the foundation most other features depend on.
 - **`templates/`** — Jinja2 templates extending `base.html`, which defines the shared nav/footer shell and `{% block title %}` / `{% block head %}` / `{% block content %}` / `{% block scripts %}` blocks. `login.html` and `register.html` POST to `/login` and `/register` respectively but the corresponding server-side handlers only support GET so far.
 - **`static/css/style.css`** and **`static/js/main.js`** — global styles and client-side JS; `main.js` is currently empty, awaiting feature work.
