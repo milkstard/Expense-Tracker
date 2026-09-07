@@ -46,10 +46,10 @@
         return input;
     }
 
-    function submitEdit(editUrl, values) {
+    function submitTo(url, values) {
         var form = document.createElement("form");
         form.method = "POST";
-        form.action = editUrl + window.location.search;
+        form.action = url + window.location.search;
         form.style.display = "none";
 
         Object.keys(values).forEach(function (name) {
@@ -129,7 +129,7 @@
         cells[4].appendChild(cancelBtn);
 
         function doSave() {
-            submitEdit(row.dataset.editUrl, {
+            submitTo(row.dataset.editUrl, {
                 amount: amountInput.value,
                 category: categorySelect.value,
                 date: dateInput.value,
@@ -156,11 +156,23 @@
     }
 
     table.addEventListener("click", function (event) {
-        var link = event.target.closest("[data-txn-edit]");
-        if (!link) return;
-        event.preventDefault();
-        var row = link.closest("tr");
-        if (row) openEditor(row);
+        var editLink = event.target.closest("[data-txn-edit]");
+        if (editLink) {
+            event.preventDefault();
+            var editRow = editLink.closest("tr");
+            if (editRow) openEditor(editRow);
+            return;
+        }
+
+        var deleteBtn = event.target.closest("[data-txn-delete]");
+        if (deleteBtn) {
+            var deleteRow = deleteBtn.closest("tr");
+            if (!deleteRow) return;
+            var label = deleteRow.dataset.rawDescription || (deleteRow.dataset.category + " expense");
+            if (window.confirm('Delete "' + label + '"? This cannot be undone.')) {
+                submitTo(deleteRow.dataset.deleteUrl, {});
+            }
+        }
     });
 
     // The server names a row to reopen via data-edit-id — either a

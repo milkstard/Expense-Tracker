@@ -104,6 +104,24 @@ def update_expense(expense_id, user_id, amount, category, date, description):
         conn.close()
 
 
+def delete_expense_by_id(expense_id, user_id):
+    """Remove one expense, scoped to its owner. Returns rows deleted (0 or 1).
+
+    Named ..._by_id (not delete_expense) so it can't be shadowed by the route
+    of that name in app.py, which imports this into its own namespace.
+    """
+    conn = get_db()
+    try:
+        cur = conn.execute(
+            "DELETE FROM expenses WHERE id = ? AND user_id = ?",
+            (expense_id, user_id),
+        )
+        conn.commit()
+        return cur.rowcount
+    finally:
+        conn.close()
+
+
 def get_user_by_email(email):
     conn = get_db()
     try:

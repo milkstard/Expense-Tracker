@@ -6,6 +6,7 @@ from .db import (
     create_expense,
     get_expense_by_id,
     update_expense,
+    delete_expense_by_id,
     get_user_by_email,
     get_user_by_id,
     get_expense_summary,
