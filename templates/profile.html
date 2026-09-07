@@ -82,13 +82,15 @@
                             data-raw-description="{{ txn.raw_description }}"
                             data-category="{{ txn.category }}"
                             data-raw-amount="{{ txn.raw_amount }}"
-                            data-edit-url="{{ url_for('edit_expense', id=txn.id) }}">
+                            data-edit-url="{{ url_for('edit_expense', id=txn.id) }}"
+                            data-delete-url="{{ url_for('delete_expense', id=txn.id) }}">
                             <td class="txn-date">{{ txn.date }}</td>
                             <td>{{ txn.description }}</td>
                             <td>{{ pill(txn.category, txn.tone) }}</td>
                             <td class="num">{{ txn.amount }}</td>
                             <td class="txn-actions">
                                 <a href="{{ url_for('edit_expense', id=txn.id) }}" class="txn-action" data-txn-edit>Edit</a>
+                                <button type="button" class="txn-action txn-action--danger" data-txn-delete>Delete</button>
                             </td>
                         </tr>
                         {% endfor %}

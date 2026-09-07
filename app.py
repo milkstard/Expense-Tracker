@@ -13,6 +13,7 @@ from database import (
     create_expense,
     get_expense_by_id,
     update_expense,
+    delete_expense_by_id,
     get_user_by_email,
     get_user_by_id,
     get_expense_summary,
@@ -400,13 +401,23 @@ def edit_expense(id):
     return redirect(url_for("profile", **filter_args))
 
 
-# ------------------------------------------------------------------ #
-# Placeholder routes — students will implement these                  #
-# ------------------------------------------------------------------ #
-
-@app.route("/expenses/<int:id>/delete")
+@app.route("/expenses/<int:id>/delete", methods=["POST"])
 def delete_expense(id):
-    return "Delete expense — coming in Step 9"
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("login"))
+
+    # Same reasoning as edit_expense: one 404 for both "no such expense" and
+    # "belongs to someone else", so the response never confirms another
+    # user's expense id exists.
+    if get_expense_by_id(id, user_id) is None:
+        abort(404)
+
+    delete_expense_by_id(id, user_id)
+
+    # Carry the active date filter across the redirect, never "edit".
+    filter_args = {k: v for k, v in request.args.items() if k != "edit"}
+    return redirect(url_for("profile", **filter_args))
 
 
 if __name__ == "__main__":

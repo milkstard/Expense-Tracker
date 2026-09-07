@@ -859,6 +859,17 @@ input[type="date"].form-input {
 
 .txn-action:hover { color: var(--accent); }
 
+button.txn-action {
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    font-family: var(--font-body);
+}
+
+.txn-action--danger { color: var(--danger); }
+.txn-action--danger:hover { color: var(--danger); text-decoration: underline; }
+
 .txn-input {
     width: 100%;
     padding: 0.4rem 0.6rem;
