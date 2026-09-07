@@ -2,7 +2,7 @@ import os
 import sqlite3
 from datetime import date, datetime
 
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, abort
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from database import (
@@ -11,6 +11,8 @@ from database import (
     seed_db,
     create_user,
     create_expense,
+    get_expense_by_id,
+    update_expense,
     get_user_by_email,
     get_user_by_id,
     get_expense_summary,
@@ -122,6 +124,34 @@ def clean_amount(raw):
     return round(amount, 2), None
 
 
+def parse_expense_form(form_data):
+    """Build and validate an expense form dict shared by add/edit routes.
+
+    Returns (form, amount, expense_date, error) — form is always populated
+    (so it can be re-rendered on error), amount/expense_date are None if
+    validation failed.
+    """
+    form = {
+        "amount": form_data.get("amount", "").strip(),
+        "category": form_data.get("category", "").strip(),
+        "date": form_data.get("date", "").strip(),
+        "description": form_data.get("description", "").strip(),
+    }
+
+    amount, error = clean_amount(form["amount"])
+
+    if not error and form["category"] not in CATEGORIES:
+        error = "Please choose a category."
+
+    expense_date = None
+    if not error:
+        expense_date, malformed = clean_date_param(form["date"])
+        if malformed or not expense_date:
+            error = "Please enter a valid date."
+
+    return form, amount, expense_date, error
+
+
 # ------------------------------------------------------------------ #
 # Routes                                                              #
 # ------------------------------------------------------------------ #
@@ -184,12 +214,15 @@ def logout():
     return redirect(url_for("landing"))
 
 
-@app.route("/profile")
-def profile():
-    user_id = session.get("user_id")
-    if not user_id:
-        return redirect(url_for("login"))
+def render_profile(user_id, edit_id=None, edit_form=None, edit_error=None):
+    """Build and render the profile page.
 
+    Shared by GET /profile and the /expenses/<id>/edit POST error path, so
+    a failed inline edit re-renders the same summary/transactions/category
+    data instead of duplicating that work. `edit_id` reopens that row's
+    editor on load; when `edit_form` is also set (a failed save), that one
+    row's fields show what the user submitted rather than the DB values.
+    """
     row = get_user_by_id(user_id)
     if row is None:
         # Stale session pointing at a user that no longer exists.
@@ -233,20 +266,39 @@ def profile():
         "count_hint": "In this range" if active else "Logged so far",
     }
 
-    transactions = [
-        {
-            "date": format_txn_date(row["date"]),
-            "description": row["description"] or "—",
-            "category": row["category"],
-            "tone": category_tone(row["category"]),
-            "amount": format_inr(row["amount"]),
-        }
-        # A filtered view shows every match, so the table can't silently
-        # disagree with the transaction count in the stat card above it.
-        for row in get_recent_expenses(
-            user_id, None if active else 8, start_date, end_date
-        )
-    ]
+    transactions = []
+    # A filtered view shows every match, so the table can't silently
+    # disagree with the transaction count in the stat card above it.
+    for exp in get_recent_expenses(user_id, None if active else 8, start_date, end_date):
+        editing_this_row = edit_form is not None and exp["id"] == edit_id
+        if editing_this_row:
+            raw_date = edit_form["date"]
+            raw_description = edit_form["description"]
+            category = edit_form["category"]
+            raw_amount = edit_form["amount"]
+        else:
+            raw_date = exp["date"]
+            raw_description = exp["description"] or ""
+            category = exp["category"]
+            raw_amount = f"{exp['amount']:.2f}"
+
+        try:
+            amount_display = format_inr(float(raw_amount))
+        except (TypeError, ValueError):
+            # Only reachable for the row being re-edited after a bad submit.
+            amount_display = raw_amount
+
+        transactions.append({
+            "id": exp["id"],
+            "date": format_txn_date(raw_date),
+            "raw_date": raw_date,
+            "description": raw_description or "—",
+            "raw_description": raw_description,
+            "category": category,
+            "tone": category_tone(category),
+            "amount": amount_display,
+            "raw_amount": raw_amount,
+        })
 
     breakdown = get_category_breakdown(user_id, start_date, end_date)
     peak = breakdown[0]["total"] if breakdown else 0
@@ -268,7 +320,20 @@ def profile():
         categories=categories,
         filters=filters,
         error=error,
+        edit_categories=CATEGORIES,
+        edit_id=edit_id,
+        edit_error=edit_error,
     )
+
+
+@app.route("/profile")
+def profile():
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("login"))
+
+    edit_id = request.args.get("edit", type=int)
+    return render_profile(user_id, edit_id=edit_id)
 
 
 @app.route("/expenses/add", methods=["GET", "POST"])
@@ -278,23 +343,7 @@ def add_expense():
         return redirect(url_for("login"))
 
     if request.method == "POST":
-        form = {
-            "amount": request.form.get("amount", "").strip(),
-            "category": request.form.get("category", "").strip(),
-            "date": request.form.get("date", "").strip(),
-            "description": request.form.get("description", "").strip(),
-        }
-
-        amount, error = clean_amount(form["amount"])
-
-        if not error and form["category"] not in CATEGORIES:
-            error = "Please choose a category."
-
-        expense_date = None
-        if not error:
-            expense_date, malformed = clean_date_param(form["date"])
-            if malformed or not expense_date:
-                error = "Please enter a valid date."
+        form, amount, expense_date, error = parse_expense_form(request.form)
 
         if error:
             return render_template(
@@ -316,14 +365,44 @@ def add_expense():
     return render_template("add_expense.html", categories=CATEGORIES, form=form)
 
 
+@app.route("/expenses/<int:id>/edit", methods=["GET", "POST"])
+def edit_expense(id):
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("login"))
+
+    # None covers both "no such expense" and "belongs to someone else" —
+    # collapsing them into one 404 avoids confirming another user's expense
+    # id exists.
+    expense = get_expense_by_id(id, user_id)
+    if expense is None:
+        abort(404)
+
+    # Carry the active date filter (if any) across every redirect below,
+    # but never "edit" itself — that's set explicitly by each redirect.
+    filter_args = {k: v for k, v in request.args.items() if k != "edit"}
+
+    if request.method == "GET":
+        # The profile page owns rendering the editor; this just opens the
+        # right row on it, so a typed/bookmarked edit URL still works and
+        # keeps the current filter querystring intact.
+        return redirect(url_for("profile", edit=id, **filter_args))
+
+    form, amount, expense_date, error = parse_expense_form(request.form)
+
+    if error:
+        return render_profile(user_id, edit_id=id, edit_form=form, edit_error=error)
+
+    update_expense(
+        id, user_id, amount, form["category"], expense_date,
+        form["description"] or None,
+    )
+    return redirect(url_for("profile", **filter_args))
+
+
 # ------------------------------------------------------------------ #
 # Placeholder routes — students will implement these                  #
 # ------------------------------------------------------------------ #
-
-@app.route("/expenses/<int:id>/edit")
-def edit_expense(id):
-    return "Edit expense — coming in Step 8"
-
 
 @app.route("/expenses/<int:id>/delete")
 def delete_expense(id):

@@ -794,7 +794,7 @@ input[type="date"].form-input {
 
 .txn-table {
     width: 100%;
-    min-width: 480px;
+    min-width: 620px;
     border-collapse: collapse;
     font-size: 0.9rem;
 }
@@ -836,6 +836,50 @@ input[type="date"].form-input {
     color: var(--ink-muted);
     white-space: nowrap;
 }
+
+/* Inline row editing -------------------------------------------------- */
+/* Actions column, the compact form controls that replace a row's cells  */
+/* while it's being edited, and the small button variants Save/Cancel    */
+/* need to fit inside a table row. static/js/main.js drives all of this. */
+
+.txn-actions {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.txn-table td.txn-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+
+.txn-action {
+    color: var(--ink-muted);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.txn-action:hover { color: var(--accent); }
+
+.txn-input {
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    color: var(--ink);
+    background: var(--paper-card);
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.txn-input:focus { border-color: var(--accent); }
+
+.btn-sm {
+    padding: 0.4rem 0.85rem;
+    font-size: 0.8rem;
+}
+
+.txn-row--editing { background: var(--paper); }
 
 /* Category breakdown ----------------------------------------------- */
 

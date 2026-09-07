@@ -73,6 +73,37 @@ def create_expense(user_id, amount, category, date, description):
         conn.close()
 
 
+def get_expense_by_id(expense_id, user_id):
+    """One expense, scoped to its owner. Returns None if it isn't theirs.
+
+    The user_id filter is the authorization check — a caller that only
+    matched on id would let anyone read any expense by guessing the number.
+    """
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT * FROM expenses WHERE id = ? AND user_id = ?",
+            (expense_id, user_id),
+        ).fetchone()
+    finally:
+        conn.close()
+
+
+def update_expense(expense_id, user_id, amount, category, date, description):
+    """Overwrite an expense's editable fields. Returns rows changed (0 or 1)."""
+    conn = get_db()
+    try:
+        cur = conn.execute(
+            "UPDATE expenses SET amount = ?, category = ?, date = ?, description = ? "
+            "WHERE id = ? AND user_id = ?",
+            (amount, category, date, description, expense_id, user_id),
+        )
+        conn.commit()
+        return cur.rowcount
+    finally:
+        conn.close()
+
+
 def get_user_by_email(email):
     conn = get_db()
     try:
